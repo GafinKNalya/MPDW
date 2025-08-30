@@ -1,0 +1,111 @@
+---
+title: "IPM"
+author: "G1401231083 - Gafin Khalifa Nalya"
+date: "2025-08-28"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(lmtest)
+library(nlme)
+```
+
+```{r}
+ipm <- read_excel("C:/Users/Gafin K Nalya/Documents/ipb/STK/SEM 5/MPDW/MPDW/Pertemuan 2/ipm bandung.xlsx")
+```
+
+```{r}
+plot(ipm)
+```
+
+
+```{r}
+# Model awal (regresi linear sederhana)
+model <- lm(IPM ~ Tahun, data = ipm)
+summary(model)
+```
+
+```{r}
+# Plot residual
+plot(resid(model), type = "o", main = "Residual Plot", ylab = "Residuals")
+
+# ACF plot residual
+acf(resid(model), main = "ACF Residuals")
+```
+
+```{r}
+dwtest(model)
+```
+
+```{r}
+model.o <- gls(IPM ~ Tahun, data = ipm, correlation = corAR1(form = ~Tahun))
+summary(model.o)
+```
+
+```{r}
+# Hildreth-Lu estimation
+hildreth_lu <- function(model, rho_seq) {
+  y <- model$model[, 1]
+  X <- model.matrix(model)
+
+  best_rss <- Inf
+  best_rho <- NULL
+  best_model <- NULL
+
+  for (rho in rho_seq) {
+    # transformasi Hildreth-Lu
+    y_r <- y[-1] - rho * y[-length(y)]
+    X_r <- X[-1, ] - rho * X[-length(y), ]
+
+    m <- lm(y_r ~ X_r[,-1])   # regresi
+    rss <- sum(resid(m)^2)
+
+    if (rss < best_rss) {
+      best_rss <- rss
+      best_rho <- rho
+      best_model <- m
+    }
+  }
+
+  # tambahkan atribut rho ke model terbaik
+  attr(best_model, "rho") <- best_rho
+  return(best_model)
+}
+
+# contoh pemakaian
+model.lu <- hildreth_lu(model, seq(-0.9, 0.9, by = 0.01))
+# Lihat rho terpilih
+attr(model.lu, "rho")
+summary(model.lu)
+```
+
+```{r}
+# Ringkasan
+summary(model)
+summary(model.o)
+summary(model.lu)
+```
+
+```{r}
+
+# untuk model lm
+dwtest(model)
+dwtest(model.lu)
+
+# fungsi DW khusus untuk gls (karena dwtest tidak support gls)
+dw_gls <- function(model) {
+  e <- resid(model)
+  num <- sum((e[-1] - e[-length(e)])^2)
+  den <- sum(e^2)
+  return(num/den)
+}
+
+dw_gls(model.o)
+```
+
+```{r}
+# Bandingkan AIC
+AIC(model, model.o, model.lu)
+```
+

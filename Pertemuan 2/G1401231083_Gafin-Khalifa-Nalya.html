@@ -406,6 +406,12 @@ data</code></pre>
 ##  9 2023-02-13 00:00:00        298.
 ## 10 2023-02-14 00:00:00        245.
 ## # ℹ 90 more rows</code></pre>
+<p>Cek Tanggal Kosong</p>
+<pre class="r"><code>data$Date &lt;- as.Date(data$Date)
+all_dates &lt;- seq(min(data$Date), max(data$Date), by = &quot;day&quot;)
+missing_dates &lt;- setdiff(all_dates, data$Date)
+missing_dates</code></pre>
+<pre><code>## numeric(0)</code></pre>
 <p>Jadikan Time Series</p>
 <pre class="r"><code>data.ts &lt;- ts(data$Total_Sales)</code></pre>
 </div>

@@ -28,6 +28,15 @@ data <- sales[401:500,]
 data
 ```
 
+Cek Tanggal Kosong
+
+```{r}
+data$Date <- as.Date(data$Date)
+all_dates <- seq(min(data$Date), max(data$Date), by = "day")
+missing_dates <- setdiff(all_dates, data$Date)
+missing_dates
+```
+
 Jadikan Time Series
 
 ```{r}

@@ -1,0 +1,423 @@
+---
+title: "ipm lebih baru"
+author: "G1401231083 - Gafin Khalifa Nalya"
+date: "2025-09-02"
+output: html_document
+---
+
+## Packages
+
+```{r}
+library(readxl)
+library(nlme)
+library(orcutt)
+library(dynlm)
+library(dplyr)
+library(TTR)
+library(forecast)
+library(lmtest) #digunakan untuk uji formal pendeteksian autokorelasi
+library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
+library(HoRM) 
+```
+
+## Input Data
+
+```{r}
+ipm <- read_excel("C:/Users/Gafin K Nalya/Documents/ipb/STK/SEM 5/MPDW/MPDW/Pertemuan 2/ipm bandung.xlsx")
+head(ipm)
+```
+
+## Eksplorasi Data
+
+### Menjadikan time-series
+
+```{r}
+data.ts <- ts(ipm$IPM)
+data.ts
+```
+
+```{r}
+ts.plot(data.ts, xlab="Time Period ", ylab="IPM", main= "Time Series Plot of IPM")
+points(data.ts)
+```
+
+Ada tren -> DMA dan DES
+
+```{r}
+dt.sma <- SMA(data.ts, n=3)
+dma <- SMA(dt.sma, n = 3)
+At <- 2*dt.sma - dma
+Bt <- 2/(3-1)*(dt.sma - dma)
+dt.dma<- At+Bt
+dt.ramal<- c(NA, dt.dma)
+
+t = 1:5
+f = c()
+
+for (i in t) {
+  f[i] = At[length(At)] + Bt[length(Bt)]*(i)
+}
+
+dt.gab <- cbind(aktual = c(data.ts,rep(NA,5)), 
+                pemulusan1 = c(dt.sma,rep(NA,5)),
+                pemulusan2 = c(dt.dma, rep(NA,5)),
+                At = c(At, rep(NA,5)), 
+                Bt = c(Bt,rep(NA,5)),
+                ramalan = c(dt.ramal, f[-1]))
+dt.gab
+```
+
+
+```{r}
+#Plot time series
+ts.plot(dt.gab[, c(1,3,6)], 
+        xlab = "Time Period", 
+        ylab = "IPM",
+        main = "DMA N=3 Data IPM", 
+        col = c("black", "green", "red"),
+        lty = 1:3, lwd = 2)
+
+legend("topleft", 
+       legend = c("data aktual", "data pemulusan", "data peramalan"),
+       col = c("black", "green", "red"),
+       lty = 1:3, lwd = 2, cex = 0.8)
+
+```
+
+Menghitung akurasi DMA
+
+```{r}
+#Menghitung nilai keakuratan
+error.dma = data.ts-dt.ramal[1:length(data.ts)]
+SSE.dma = sum(error.dma[6:length(data.ts)]^2)
+MSE.dma = mean(error.dma[6:length(data.ts)]^2)
+MAPE.dma = mean(abs((error.dma[6:length(data.ts)]/data.ts[6:length(data.ts)])*100))
+
+akurasi.dma <- matrix(c(SSE.dma, MSE.dma, MAPE.dma))
+row.names(akurasi.dma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi.dma) <- c("Akurasi m = 3")
+akurasi.dma
+```
+
+Menggunakan metode Double Exponential Smoothing
+
+```{r}
+#membagi training dan testing
+training<-ipm[1:11,2]
+testing<-ipm[12:14,2]
+
+#data time series
+training.ts<-ts(training)
+testing.ts<-ts(testing,start=12)
+
+#eksplorasi data
+plot(data.ts, col="red",main="Plot semua data")
+points(data.ts)
+```
+
+```{r}
+plot(training.ts, col="blue",main="Plot data training")
+points(training.ts)
+```
+
+Cari lambda dan gamma optimum. Dapat dilihat pada smoothing parameters alpha untuk nilai lambda dan bedta beta untuk nilai gamma
+
+```{r}
+#Lamda dan gamma optimum
+des.opt<- HoltWinters(training.ts, gamma = FALSE)
+des.opt
+```
+
+```{r}
+plot(des.opt)
+legend("topleft", c("Data Aktual", "Peramalan"), col = c("black", "red"), 
+       lty = c(1,1))
+```
+
+```{r}
+#ramalan
+ramalandesopt<- forecast(des.opt, h=5)
+ramalandesopt
+```
+
+```{r}
+accuracy(ramalandesopt)
+```
+
+
+Cari akurasi metode DES
+
+```{r}
+ssedes.train<-des.opt$SSE
+msedes.train<-ssedes.train/length(training.ts)
+sisaandes<-ramalandesopt$residuals
+head(sisaandes)
+```
+
+```{r}
+mapedes.train <- sum(abs(sisaandes[3:length(training.ts)]/training.ts[3:length(training.ts)])*100)/length(training.ts)
+
+akurasides.opt <- matrix(c(ssedes.train,msedes.train,mapedes.train))
+row.names(akurasides.opt)<- c("SSE", "MSE", "MAPE")
+colnames(akurasides.opt) <- c("Akurasi lamda dan gamma optimum")
+akurasides.opt
+```
+
+```{r}
+#Akurasi data testing
+selisihdesopt<-ramalandesopt$mean-testing.ts
+selisihdesopt
+```
+
+```{r}
+SSEtestingdesopt<-sum(selisihdesopt^2)
+SSEtestingdesopt<-SSEtestingdesopt/length(testing.ts)
+MAPEtestingdesopt<-sum(abs(selisihdesopt/testing.ts)*100)/length(testing.ts)
+
+akurasiDesTesting <- matrix(c(SSEtestingdesopt,SSEtestingdesopt,MAPEtestingdesopt))
+row.names(akurasiDesTesting)<- c("SSE", "MSE", "MAPE")
+colnames(akurasiDesTesting) <- c("Akurasi lamda dan gamma optimum")
+akurasiDesTesting
+```
+
+Perbandingan akurasi antar kedua metode
+
+```{r}
+cbind(akurasi.dma, akurasides.opt)
+```
+
+Metode DES lebih baik dari DMA karena nilai SSE, MSE, dan MAPE yang lebih kecil.
+
+## Regresi
+
+### Eksplorasi
+
+```{r}
+plot(ipm$Tahun, ipm$IPM,
+     main = "Scatterplot IPM per Tahun",
+     xlab = "Tahun",
+     ylab = "IPM",
+     pch = 19,       # bentuk titik (19 = bulat solid)
+     col = "blue")   # warna titik
+
+```
+
+```{r}
+cor(ipm$Tahun,ipm$IPM)
+```
+
+Membuat model regresi
+
+```{r}
+model<- lm(IPM~Tahun, data = ipm)
+summary(model)
+```
+
+Uji terhadap sisaan
+
+```{r}
+#sisaan dan fitted value
+sisaan<- residuals(model)
+fitValue<- predict(model)
+
+#Diagnostik dengan eksploratif
+par(mfrow = c(2,2))
+qqnorm(sisaan)
+qqline(sisaan, col = "steelblue", lwd = 2)
+plot(fitValue, sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+abline(a = 0, b = 0, lwd = 2)
+hist(sisaan, col = "steelblue")
+plot(seq(1,14,1), sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,14,1), sisaan, col = "red")
+abline(a = 0, b = 0, lwd = 2)
+```
+
+```{r}
+#Melihat Sisaan Menyebar Normal/Tidak
+#H0: sisaan mengikuti sebaran normal
+#H1: sisaan tidak mengikuti sebaran normal
+shapiro.test(sisaan)
+
+```
+
+```{r}
+ks.test(sisaan, "pnorm", mean=mean(sisaan), sd=sd(sisaan))
+```
+
+Sisaan berdistribusi normal
+
+```{r}
+par(mfrow = c(1,2))
+acf(sisaan)
+pacf(sisaan)
+```
+
+```{r}
+#Deteksi autokorelasi dengan uji-Durbin Watson
+#H0: tidak ada autokorelasi
+#H1: ada autokorelasi
+dwtest(model)
+```
+
+Ada autokorelasi
+
+## Penanganan Autokorelasi
+
+### Cochrane-Orcutt
+
+```{r}
+#Penanganan Autokorelasi Cochrane-Orcutt
+modelCO<-cochrane.orcutt(model)
+modelCO
+```
+
+```{r}
+rho<- modelCO$rho
+rho
+```
+
+Hubungan DW test dengan kegagalan Cochrane–Orcutt
+
+
+DW test → autokorelasi sangat kuat (ρ ≈ 0.92)
+
+Hasil DW = 0.3768 jauh di bawah 2 → ini menunjukkan autokorelasi positif ekstrem.
+
+Estimasi CO (rho 0.919315) juga mengonfirmasi hal ini.
+
+
+Cochrane–Orcutt bekerja dengan iterasi
+
+CO memperkirakan ρ, lalu mentransformasi data, lalu menghitung ulang model, dan diulang sampai stabil.
+
+Jika ρ mendekati 1 (unit root / hampir non-stasioner), proses ini jadi tidak stabil → algoritma “loncat-loncat” dan tidak menemukan titik konvergen.
+
+
+Apa yang terjadi di outputmu?
+
+Iterasi sudah sampai 100 kali.
+
+ρ tetap sekitar 0.919, belum stabil.
+
+Akhirnya CO berhenti dan memberi peringatan “Did not converge”.
+
+Karena gagal konvergen, koefisien hasil transformasi jadi NA.
+
+```{r}
+#Transformasi Manual
+ipm.trans<- ipm$IPM[-1]-ipm$IPM[-14]*rho
+tahun.trans<- ipm$Tahun[-1]-ipm$Tahun[-14]*rho
+modelCOmanual<- lm(ipm.trans~tahun.trans)
+summary(modelCOmanual)
+```
+
+```{r}
+dwtest(modelCOmanual)
+```
+
+
+```{r}
+#Mencari Penduga Koefisien Regresi setelah Transformasi ke Persamaan Awal
+b0bintang <- modelCOmanual$coefficients[-2]
+b0 <- b0bintang/(1-rho)
+b1 <- modelCOmanual$coefficients[-1]
+b0
+```
+
+```{r}
+b1
+```
+
+### Hildreth-Lu
+
+```{r}
+#Penanganan Autokorelasi Hildreth lu
+# Hildreth-Lu
+hildreth.lu.func<- function(r, model){
+  x <- model.matrix(model)[,-1]
+  y <- model.response(model.frame(model))
+  n <- length(y)
+  t <- 2:n
+  y <- y[t]-r*y[t-1]
+  x <- x[t]-r*x[t-1]
+  
+  return(lm(y~x))
+}
+
+#Pencarian rho yang meminimumkan SSE
+r <- c(seq(0.1,0.9, by= 0.1))
+tab <- data.frame("rho" = r, "SSE" = sapply(r, function(i){deviance(hildreth.lu.func(i, model))}))
+round(tab, 4)
+```
+
+ρ yang menghasilkan SSE minimum ketika 0.9. Namun masih belum teliti. 
+
+```{r}
+#Rho optimal di sekitar 0.4
+rOpt <- seq(0.9,1, by= 0.001)
+tabOpt <- data.frame("rho" = rOpt, "SSE" = sapply(rOpt, function(i){deviance(hildreth.lu.func(i, model))}))
+head(tabOpt[order(tabOpt$SSE),])
+```
+
+SSE minimum di rho = 0.944
+
+```{r}
+# cari titik optimum
+rho.opt <- tabOpt[which.min(tabOpt$SSE), "rho"]
+sse.opt <- min(tabOpt$SSE)
+
+# plot dengan batas x sampai 1
+plot(tab$SSE ~ tab$rho, type = "l", 
+     xlab = "Rho", ylab = "SSE",
+     xlim = c(0, 1))   # atur batas sumbu X
+
+# garis vertikal di rho optimum
+abline(v = rho.opt, lty = 2, col = "red", lwd = 2)
+
+# titik di lokasi optimum
+points(rho.opt, sse.opt, col = "blue", pch = 19)
+
+# label di atas titik
+text(x = rho.opt, y = sse.opt, 
+     labels = paste0("rho = ", round(rho.opt, 3)), 
+     pos = 3, cex = 1.0)
+
+```
+
+Perhitungan yang dilakukan aplikasi R menunjukkan bahwa nilai ρ
+ optimum, yaitu saat SSE terkecil terdapat pada nilai ρ=0.944
+. Hal tersebut juga ditunjukkan pada plot. Selanjutnya, model dapat didapatkan dengan mengevaluasi nilai ρ
+ ke dalam fungsi hildreth.lu.func, serta dilanjutkan dengan pengujian autokorelasi dengan uji Durbin-Watson. Namun, setelah pengecekan tersebut tidak lupa koefisien regresi tersebut digunakan untuk transformasi balik. Persamaan hasil transformasi itulah yang menjadi persamaan sesungguhnya.
+
+```{r}
+#Model terbaik
+modelHL <- hildreth.lu.func(0.944, model)
+summary(modelHL)
+```
+
+```{r}
+cat("y = ", coef(modelHL)[1]/(1-0.341), "+", coef(modelHL)[2],"x", sep = "")
+```
+
+```{r}
+dwtest(modelHL)
+```
+
+Tidak ada autokorelasi pada taraf nyata 5%.
+
+```{r}
+#Perbandingan
+sseModelawal <- anova(model)$`Sum Sq`[-1]
+sseModelCO <- anova(modelCOmanual)$`Sum Sq`[-1]
+sseModelHL <- anova(modelHL)$`Sum Sq`[-1]
+mseModelawal <- sseModelawal/length(ipm)
+mseModelCO <- sseModelCO/length(ipm)
+mseModelHL <- sseModelHL/length(ipm)
+akurasi <- matrix(c(sseModelawal,sseModelCO,sseModelHL,
+                    mseModelawal,mseModelCO,mseModelHL),nrow=2,ncol=3,byrow = T)
+colnames(akurasi) <- c("Model Awal", "Model Cochrane-Orcutt", "Model Hildreth-Lu")
+row.names(akurasi) <- c("SSE","MSE")
+akurasi
+```
+
+Model Cochrane-Orcutt dan Hildreth-Lu tidak berbeda jauh karena nilai SSE dan MSE yang hampir sama, tetapi model Hildreth-Lu lebih kecil dengan sangat sedikit.

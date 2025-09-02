@@ -7,11 +7,17 @@ output: html_document
 
 ```{r}
 library(readxl)
-library(lmtest)
 library(nlme)
 library(orcutt)
 library(dynlm)
+library(dplyr)
+library(TTR)
+library(forecast)
+library(lmtest) #digunakan untuk uji formal pendeteksian autokorelasi
+library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
+library(HoRM) 
 ```
+
 
 ```{r}
 ipm <- read_excel("C:/Users/Gafin K Nalya/Documents/ipb/STK/SEM 5/MPDW/MPDW/Pertemuan 2/ipm bandung.xlsx")

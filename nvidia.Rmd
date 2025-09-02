@@ -15,4 +15,50 @@ data <- read_csv("NVIDIA_STOCK.csv")
 data
 ```
 
+```{r}
+colnames(data)
 ```
+
+```{r}
+library(dplyr)
+
+# ubah kolom Date ke format Date (sekarang masih char)
+data$Date <- as.Date(data$Date, format = "%m/%d/%Y")
+
+# buat sequence tanggal lengkap dari min sampai max
+all_dates <- data.frame(Date = seq(min(data$Date), max(data$Date), by = "day"))
+
+# gabungkan data asli dengan daftar tanggal lengkap
+data_full <- left_join(all_dates, data, by = "Date")
+
+# cek hasil: baris weekend/libur akan muncul tapi nilai kolom lain = NA
+head(data_full, 15)
+
+```
+
+
+```{r}
+
+library(zoo)
+
+# forward fill semua kolom
+data_ffill <- data_full
+data_ffill[] <- lapply(data_ffill, function(x) na.locf(x, na.rm = FALSE))
+data_ffill
+```
+
+```{r}
+library(ggplot2)
+
+# misalnya pakai kolom Adj Close
+ggplot(data_ffill, aes(x = Date, y = `Adj Close`)) +
+  geom_line(color = "blue") +
+  labs(
+    title = "Time Series Plot - NVIDIA (Adj Close)",
+    x = "Date",
+    y = "Adjusted Close Price"
+  ) +
+  theme_minimal()
+
+```
+

@@ -1,0 +1,167 @@
+---
+title: "IPM"
+author: "G1401231083 - Gafin Khalifa Nalya"
+date: "2025-09-02"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(lmtest)
+library(nlme)
+library(orcutt)
+library(dynlm)
+```
+
+```{r}
+ipm <- read_excel("C:/Users/Gafin K Nalya/Documents/ipb/STK/SEM 5/MPDW/MPDW/Pertemuan 2/ipm bandung.xlsx")
+head(ipm)
+```
+
+```{r}
+plot(ipm)
+```
+
+```{r}
+# Model awal (regresi linear sederhana)
+model <- lm(IPM ~ Tahun, data = ipm)
+summary(model)
+```
+
+```{r}
+# Plot residual
+plot(resid(model), type = "o", main = "Residual Plot", ylab = "Residuals")
+
+# ACF plot residual
+acf(resid(model), main = "ACF Residuals")
+```
+
+```{r}
+dwtest(model)
+```
+
+```{r}
+cochrane.orcutt(model, max.iter = 500)
+```
+
+Hubungan DW test dengan kegagalan Cochrane–Orcutt
+
+
+DW test → autokorelasi sangat kuat (ρ ≈ 0.92)
+
+Hasil DW = 0.3768 jauh di bawah 2 → ini menunjukkan autokorelasi positif ekstrem.
+
+Estimasi CO (rho 0.919315) juga mengonfirmasi hal ini.
+
+
+Cochrane–Orcutt bekerja dengan iterasi
+
+CO memperkirakan ρ, lalu mentransformasi data, lalu menghitung ulang model, dan diulang sampai stabil.
+
+Jika ρ mendekati 1 (unit root / hampir non-stasioner), proses ini jadi tidak stabil → algoritma “loncat-loncat” dan tidak menemukan titik konvergen.
+
+
+Apa yang terjadi di outputmu?
+
+Iterasi sudah sampai 100 kali.
+
+ρ tetap sekitar 0.919, belum stabil.
+
+Akhirnya CO berhenti dan memberi peringatan “Did not converge”.
+
+Karena gagal konvergen, koefisien hasil transformasi jadi NA.
+
+```{r}
+hildreth.lu <- function(rho.values, model) {
+  x <- model.matrix(model)[,-1]   # variabel independen (tanpa intercept)
+  y <- model.response(model.frame(model))
+  n <- length(y)
+  
+  results <- data.frame(rho = rho.values, RSS = NA)
+  models <- list()
+  
+  for (i in seq_along(rho.values)) {
+    rho <- rho.values[i]
+    t <- 2:n
+    y.trans <- y[t] - rho * y[t-1]
+    x.trans <- x[t] - rho * x[t-1]
+    
+    fit <- lm(y.trans ~ x.trans)   # model tertransformasi
+    results$RSS[i] <- sum(resid(fit)^2)
+    models[[i]] <- fit
+  }
+  
+  best <- which.min(results$RSS)
+  return(list(best.rho = results$rho[best],
+              best.model = models[[best]],
+              all.results = results))
+}
+
+```
+
+```{r}
+# definisikan grid rho
+rho.grid <- c(seq(0.1,0.8,by=0.1), seq(0.9,0.99,by=0.01))
+
+# jalankan hildreth-lu
+hl <- hildreth.lu(rho.grid, model)
+
+# lihat hasil
+hl$best.rho               # rho terbaik
+summary(hl$best.model)    # model terbaik
+hl$all.results            # tabel semua rho dan RSS
+```
+
+
+```{r}
+# Hildreth–Lu function (manual)
+hildreth.lu2 <- function(model, rho.values = seq(-0.99, 0.99, 0.01)) {
+  y <- model$model[[1]]
+  X <- model.matrix(model)
+  n <- length(y)
+  
+  rss <- numeric(length(rho.values))
+  
+  for (i in seq_along(rho.values)) {
+    rho <- rho.values[i]
+    y.trans <- y[2:n] - rho * y[1:(n-1)]
+    X.trans <- X[2:n, ] - rho * X[1:(n-1), ]
+    
+    fit <- lm(y.trans ~ X.trans - 1)
+    rss[i] <- sum(resid(fit)^2)
+  }
+  
+  best.rho <- rho.values[which.min(rss)]
+  
+  # re-estimate with best rho
+  y.trans <- y[2:n] - best.rho * y[1:(n-1)]
+  X.trans <- X[2:n, ] - best.rho * X[1:(n-1), ]
+  final.fit <- lm(y.trans ~ X.trans - 1)
+  
+  list(rho = best.rho, model = final.fit)
+}
+```
+
+```{r}
+h1 <- hildreth.lu2(model)
+h1$rho
+summary(h1$model)
+```
+Makna
+
+
+OLS awal (tanpa koreksi): koefisien Tahun = 0.5078, signifikan, R² ≈ 0.98.
+
+Setelah koreksi autokorelasi (Hildreth–Lu): koefisien Tahun jadi kecil (0.13) dan tidak signifikan.
+
+
+Artinya:
+
+
+Estimasi awal OLS overstate signifikansi Tahun karena bias autokorelasi.
+
+Setelah koreksi, hubungan Tahun–IPM tetap ada, tapi tidak signifikan secara statistik.
+
+
+
+

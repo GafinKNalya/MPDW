@@ -9,6 +9,7 @@ output: html_document
 library(readxl)
 library(lmtest)
 library(nlme)
+library(orcutt)
 ```
 
 ```{r}
@@ -39,9 +40,16 @@ dwtest(model)
 ```
 
 ```{r}
-model.o <- gls(IPM ~ Tahun, data = ipm, correlation = corAR1(form = ~Tahun))
+model.o <- lm(IPM ~ Tahun, data = ipm, correlation = corAR1(form = ~Tahun))
 summary(model.o)
 ```
+
+```{r}
+cochrane.orcutt(model)
+```
+
+
+
 
 ```{r}
 # Hildreth-Lu estimation

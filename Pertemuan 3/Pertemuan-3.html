@@ -2064,35 +2064,33 @@ data.frame(&quot;q_optimum&quot; = q_opt, &quot;p_optimum&quot; = p_opt,
 <pre><code>##   q_optimum p_optimum       AIC
 ## 1         1         6 -20.56587</code></pre>
 <pre class="r"><code>model.ardl2 &lt;- ardlDlm(formula = Yt ~ Xt, 
-                         data = train,p = 5, q = 4)
+                         data = train,p = 6, q = 1)
 summary(model.ardl2)</code></pre>
 <pre><code>## 
 ## Time series regression with &quot;ts&quot; data:
-## Start = 6, End = 15
+## Start = 7, End = 15
 ## 
 ## Call:
 ## dynlm(formula = as.formula(model.text), data = data)
 ## 
 ## Residuals:
-## ALL 10 residuals are 0: no residual degrees of freedom!
+## ALL 9 residuals are 0: no residual degrees of freedom!
 ## 
-## Coefficients: (1 not defined because of singularities)
+## Coefficients:
 ##             Estimate Std. Error t value Pr(&gt;|t|)
-## (Intercept) -162.552        NaN     NaN      NaN
-## Xt.t          -5.687        NaN     NaN      NaN
-## Xt.1          20.391        NaN     NaN      NaN
-## Xt.2          -2.113        NaN     NaN      NaN
-## Xt.3           9.415        NaN     NaN      NaN
-## Xt.4          -6.865        NaN     NaN      NaN
-## Xt.5           9.936        NaN     NaN      NaN
-## Yt.1         -10.142        NaN     NaN      NaN
-## Yt.2           6.912        NaN     NaN      NaN
-## Yt.3          -6.934        NaN     NaN      NaN
-## Yt.4              NA         NA      NA       NA
+## (Intercept)  7.93008        NaN     NaN      NaN
+## Xt.t         1.29898        NaN     NaN      NaN
+## Xt.1        -0.13685        NaN     NaN      NaN
+## Xt.2         1.38211        NaN     NaN      NaN
+## Xt.3         0.20209        NaN     NaN      NaN
+## Xt.4         2.23053        NaN     NaN      NaN
+## Xt.5        -0.01072        NaN     NaN      NaN
+## Xt.6        -2.79776        NaN     NaN      NaN
+## Yt.1        -0.42532        NaN     NaN      NaN
 ## 
 ## Residual standard error: NaN on 0 degrees of freedom
 ## Multiple R-squared:      1,  Adjusted R-squared:    NaN 
-## F-statistic:   NaN on 9 and 0 DF,  p-value: NA</code></pre>
+## F-statistic:   NaN on 8 and 0 DF,  p-value: NA</code></pre>
 <p>Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat
 ketika <span class="math inline">\(p=6\)</span> dan <span class="math inline">\(q=1\)</span>, yaitu sebesar
 <code>-20,56587</code>. Artinya, model autoregressive optimum didapat

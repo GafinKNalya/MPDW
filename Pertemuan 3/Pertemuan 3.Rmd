@@ -292,9 +292,14 @@ data.frame("q_optimum" = q_opt, "p_optimum" = p_opt,
 
 ```{r}
 model.ardl2 <- ardlDlm(formula = Yt ~ Xt, 
-                         data = train,p = 5, q = 4)
+                         data = train,p = 6, q = 1)
 summary(model.ardl2)
 ```
+
+```{r}
+AIC(model.ardl2)
+```
+
 
 Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat ketika $p=6$ dan $q=1$, yaitu sebesar `-20,56587`. Artinya, model autoregressive optimum didapat ketika $p=6$ dan $q=1$.
 

@@ -1,0 +1,157 @@
+---
+title: "Tugas Praktikum 4"
+author: "G1401231083 - Gafin Khalifa Nalya"
+date: "2025-09-21"
+output: html_document
+---
+
+## White Noise
+
+Pembangkitan data berpola AR, MA, ARMA, dan banyak proses deret waktu lainnya diawali pembangkitan *white noise*. *White noise* merupakan sederet nilai dari peubah bebas stokastik identik. Oleh karena itu, *white noise* memiliki dua karakteristik penting:
+
+1.  *White noise* tidak memiliki autokorelasi (**karena saling bebas**)
+2.  Nilai harapan dan ragam *white noise* sama (**karena berasal dari peubah acak bebas stokastik identik**)
+
+*White noise* dibangkitkan dari suatu peubah acak, umumnya peubah acak normal.
+
+```{r}
+set.seed(1234)
+wn <- rnorm(200)
+ts.plot(wn)
+```
+
+Dapat terlihat bahwa white noise tidak memiliki autokorelasi dari ACF. Perhatikan bahwa lag ke-0 adalah korelasi observasi ke-t dengan dirinya sendiri. Nilai korelasi tersebut pasti 1. Sebagai alternatif, lag pertama di plot ACF dapat ditetapkan sebagai 1 (alih-alih 0) dengan menambahkan argumen xlim(1, lag akhir). Plot tersebut dapat disandingkan bersamaan dengan membuat matriks 1×2 dengan par(mfrow = c(1,2))
+ 
+```{r}
+par(mfrow = c(1, 2)) 
+acf(wn)
+acf(wn, xlim = c(1, 20))
+```
+
+
+# SOal Nomor 1
+
+• Bangkitkan model MA(2) dengan 𝜃1 = 0.4 dan 𝜃2 = 0.6 sebanyak
+300 data (Manual dan dengan arima.sim)
+• Buat plot time series, plot ACF, plot PACF dan plot EACF. Idenifikasi
+apakah data tersebut stasioner
+• Buat scatterplot antara 𝑌𝑡 dengan 𝑌𝑡−1, 𝑌𝑡 dengan 𝑌𝑡−2 serta 𝑌𝑡
+dengan 𝑌𝑡−3
+• Hitung autokorelasi masing masing baik dari data bangkitan maupun
+secara teoritis
+
+## Proses MA
+
+Proses MA dapat dituliskan sebagai berikut:
+
+$$
+y_{t} = c + e_t + \theta_{1}e_{t-1} + \theta_{2}e_{t-2} + \dots + \theta_{q}e_{t-q} = c+{e_t+\sum_{i=1}^p \theta_ie_{t-i}}
+$$ Terlihat bahwa $e_t$, atau *white noise*, berperan penting dalam pembangkitan proses MA.
+
+## Pembangkitan Proses MA(2)
+
+Akan dicoba membangkitkan proses MA, yaitu MA(2) dengan $\theta_{1} = 0.4$ dan $\theta_{2} = 0.6$ sebanyak 300 observasi dan $c=0$. Karena diperlukan satu nilai awal untuk $e_{t-1}$, masukkan nilai pertama white noise sebagai nilai awal tersebut.
+
+```{r}
+set.seed(1234)
+n <- 300
+wn <- rnorm(n)
+ma <- wn
+```
+
+Nilai-nilai selanjutnya dapat dicari melalui *loop*. Bentuk loop dapat dilihat dari rumus MA(1) yang hendak dibangkitkan:
+
+$$
+y_t = e_t+0.4e_{t-1}+0.6e_{t-2}
+$$
+
+```{r}
+for(i in 3:300){
+   ma[i] <- wn[i] + 0.4 * wn[i - 1] + 0.6 * wn[i - 2]
+}
+ma
+```
+
+Selain menggunakan cara di atas, pembangkitan proses MA(1) dapat dilakukan dengan fungsi arima.sim() sebagai berikut.
+
+```{r}
+ma2 <- arima.sim(list(order=c(0,0,2), ma=c(0.4,06)), n=300)
+ma2
+```
+
+## Karakterisstik MA(2)
+
+### Plot Time Series
+
+```{r}
+ts.plot(ma)
+```
+
+Berdasarkan plot time series, terlihat bahwa data MA(2) yang dibangkitkan stasioner dalam rataan
+
+### Plot ACF
+
+```{r}
+acf(ma,lag.max=20)
+```
+
+Berdasarkan plot ACF tersebut, terlihat bahwa plot ACF cuts off di lag pertama.
+
+### Plot PACF
+
+```{r}
+pacf(ma,lag.max=20)
+```
+
+Berdasarkan plot PACF tersebut, terlihat bahwa plot ACF tail off dengan pola kosinus.
+
+### Plot EACF
+
+```{r}
+TSA::eacf(ma)
+```
+
+Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa segitiga nol berada pada ordo AR(0) dan ordo MA(2).
+
+### Scatterplot Antar Lag
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+yt_ma <- ma[-1]
+yt_1_ma <- ma[-300]
+plot(y=yt_ma,x=yt_1_ma)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada.
+
+```{r}
+cor(yt_ma,yt_1_ma)
+```
+
+Korelasi antara $Y_t$ dengan $Y_{t-1}$ dari hasil simulasi mendekati perhitungan teoritis yaitu
+
+$$
+\rho_1=\frac{\theta_1+\theta_1\theta_2}{1+\theta_1^2+\theta_2^2}=\frac{0.4+(0.4)(0.6)}{1+(0.5)^2+(0.6)^2}=\frac{0.64}{1.52}=0.4210526
+$$
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-2}
+
+```{r}
+yt_ma2 <- ma[-c(1,2)]
+yt_2_ma <- ma[-c(299,300)]
+```
+
+```{r}
+plot(y=yt_ma2,x=yt_2_ma)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-2}$. Hal ini sesuai dengan teori yang ada.
+
+```{r}
+cor(yt_ma2,yt_2_ma)
+```
+
+$$
+\rho_1=\frac{\theta_2}{1+\theta_1^2+\theta_2^2}=\frac{0.4+(0.4)(0.6)}{1+(0.5)^2+(0.6)^2}=\frac{0.64}{1.52}=0.4210526
+$$
